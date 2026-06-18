@@ -1,0 +1,55 @@
+name: publish to github
+on:
+  workflow_call:
+    inputs:
+      mod_name:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      build_run_id:
+        required: true
+        type: string
+      build_branch:
+        required: true
+        type: string
+      build_event:
+        required: true
+        type: string
+
+jobs:
+  publish:
+    if: inputs.build_event == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: Artifacts
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: build/libs
+
+      - name: checkout workflows
+        uses: actions/checkout@v6
+        with:
+          repository: victorfaurschou/minecraft-modding-workflows
+          token: ${{ secrets.WORKFLOWS_TOKEN }}
+          path: minecraft-modding-workflows
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.build_branch }}
+          MOD_NAME: ${{ inputs.mod_name }}
+          VERSION: ${{ inputs.version }}
+          JAR: build/libs/${{ inputs.mod_name }}-${{ inputs.version }}.jar
+          SOURCES_JAR: build/libs/${{ inputs.mod_name }}-${{ inputs.version }}-sources.jar
+        run: sh minecraft-modding-workflows/scripts/github.sh

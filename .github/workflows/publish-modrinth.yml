@@ -1,0 +1,63 @@
+name: publish to modrinth
+on:
+  workflow_call:
+    inputs:
+      mod_name:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      minecraft_version:
+        required: true
+        type: string
+      build_run_id:
+        required: true
+        type: string
+      dependencies:
+        required: false
+        type: string
+        default: '[{"project_id":"P7dR8mSH","dependency_type":"required"}]'
+      environment:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      MODRINTH_TOKEN:
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: Artifacts
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: build/libs
+
+      - name: checkout workflows
+        uses: actions/checkout@v6
+        with:
+          repository: victorfaurschou/minecraft-modding-workflows
+          token: ${{ secrets.WORKFLOWS_TOKEN }}
+          path: minecraft-modding-workflows
+
+      - name: publish
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+          VERSION: ${{ inputs.version }}
+          MINECRAFT_VERSION: ${{ inputs.minecraft_version }}
+          JAR: build/libs/${{ inputs.mod_name }}-${{ inputs.version }}.jar
+          MOD_NAME: ${{ inputs.mod_name }}
+          DEPENDENCIES: ${{ inputs.dependencies }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: sh minecraft-modding-workflows/scripts/modrinth.sh

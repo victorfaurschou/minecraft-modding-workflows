@@ -1,0 +1,88 @@
+name: release
+on:
+  workflow_call:
+    inputs:
+      mod_name:
+        required: true
+        type: string
+      build_run_id:
+        required: true
+        type: string
+      build_sha:
+        required: true
+        type: string
+      build_branch:
+        required: true
+        type: string
+      build_event:
+        required: true
+        type: string
+      modrinth_dependencies:
+        required: false
+        type: string
+      modrinth_environment:
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      minecraft_version: ${{ steps.versions.outputs.minecraft_version }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.build_sha }}
+
+      - name: read versions
+        id: versions
+        run: |
+          echo "version=$(grep '^mod_version' gradle.properties | cut -d'=' -f2 | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          echo "minecraft_version=$(grep '^minecraft_version' gradle.properties | cut -d'=' -f2 | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+  publish-github:
+    needs: release
+    permissions:
+      contents: write
+      actions: read
+    uses: victorfaurschou/minecraft-modding-workflows/.github/workflows/publish-github.yml@main
+    with:
+      mod_name: ${{ inputs.mod_name }}
+      version: ${{ needs.release.outputs.version }}
+      build_run_id: ${{ inputs.build_run_id }}
+      build_branch: ${{ inputs.build_branch }}
+      build_event: ${{ inputs.build_event }}
+    secrets: inherit
+
+  publish-modrinth:
+    needs: release
+    permissions:
+      actions: read
+      contents: read
+    uses: victorfaurschou/minecraft-modding-workflows/.github/workflows/publish-modrinth.yml@main
+    with:
+      mod_name: ${{ inputs.mod_name }}
+      version: ${{ needs.release.outputs.version }}
+      minecraft_version: ${{ needs.release.outputs.minecraft_version }}
+      build_run_id: ${{ inputs.build_run_id }}
+      dependencies: ${{ inputs.modrinth_dependencies }}
+      environment: ${{ inputs.modrinth_environment }}
+    secrets: inherit
+
+  publish-curseforge:
+    needs: release
+    permissions:
+      actions: read
+      contents: read
+    uses: victorfaurschou/minecraft-modding-workflows/.github/workflows/publish-curseforge.yml@main
+    with:
+      mod_name: ${{ inputs.mod_name }}
+      version: ${{ needs.release.outputs.version }}
+      minecraft_version: ${{ needs.release.outputs.minecraft_version }}
+      build_run_id: ${{ inputs.build_run_id }}
+    secrets: inherit
