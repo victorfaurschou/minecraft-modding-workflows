@@ -34,10 +34,13 @@ mc_ids=$(printf '%s' "$versions" | jq -r --arg p "$prefix" --argjson type_id "$t
 fabric_id=$(printf '%s' "$versions" | jq '.[] | select(.slug == "fabric") | .id')
 [ -z "$fabric_id" ] && printf 'Error: Could not find Fabric version ID on CurseForge\n' && exit 1
 
+relations="${CURSEFORGE_RELATIONS:-[]}"
+
 metadata=$(jq -n \
     --argjson mc_ids "[$mc_ids]" \
     --argjson fabric_id "$fabric_id" \
-    '{changelog:"See GitHub release notes.",changelogType:"text",releaseType:"release",gameVersions:($mc_ids + [$fabric_id]),relations:{projects:[{slug:"fabric-api",type:"requiredDependency"}]}}')
+    --argjson relations "$relations" \
+    '{changelog:"See GitHub release notes.",changelogType:"text",releaseType:"release",gameVersions:($mc_ids + [$fabric_id]),relations:{projects:$relations}}')
 
 response=$(curl -sf -X POST "https://minecraft.curseforge.com/api/projects/${PROJECT_ID}/upload-file" \
     -H "X-Api-Token: ${CURSEFORGE_LEGACY_API_TOKEN}" \

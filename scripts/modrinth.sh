@@ -24,8 +24,7 @@ game_versions=$(curl -sf "https://api.modrinth.com/v2/tag/game_version" \
     -H "User-Agent: victorfaurschou/${MOD_NAME}" | \
     jq --arg p "$prefix" '[.[] | select(.version_type == "release") | select(.version == $p or (.version | startswith($p + "."))) | .version]')
 
-_deps_default='[{"project_id":"P7dR8mSH","dependency_type":"required"}]'
-deps="${DEPENDENCIES:-$_deps_default}"
+deps="${DEPENDENCIES:-[]}"
 
 data=$(jq -n \
     --arg name "$VERSION" \

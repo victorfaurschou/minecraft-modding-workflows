@@ -17,7 +17,7 @@ on:
       dependencies:
         required: false
         type: string
-        default: '[{"project_id":"P7dR8mSH","dependency_type":"required"}]'
+        default: '[]'
       environment:
         required: false
         type: string
