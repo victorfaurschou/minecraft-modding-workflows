@@ -17,10 +17,28 @@ on:
       build_event:
         required: true
         type: string
+      modrinth_loaders:
+        required: true
+        type: string
       modrinth_dependencies:
         required: false
         type: string
+      modrinth_minecraft_versions:
+        required: false
+        type: string
+        default: ''
       modrinth_environment:
+        required: true
+        type: string
+      modrinth_version_type:
+        required: false
+        type: string
+        default: ''
+      modrinth_changelog:
+        required: false
+        type: string
+        default: ''
+      modrinth_version_name:
         required: false
         type: string
         default: ''
@@ -99,10 +117,14 @@ jobs:
     with:
       mod_name: ${{ inputs.mod_name }}
       version: ${{ needs.release.outputs.version }}
-      minecraft_version: ${{ needs.release.outputs.minecraft_version }}
+      minecraft_versions: ${{ inputs.modrinth_minecraft_versions || needs.release.outputs.minecraft_version }}
       build_run_id: ${{ inputs.build_run_id }}
+      loaders: ${{ inputs.modrinth_loaders }}
       dependencies: ${{ inputs.modrinth_dependencies }}
       environment: ${{ inputs.modrinth_environment }}
+      version_type: ${{ inputs.modrinth_version_type }}
+      changelog: ${{ inputs.modrinth_changelog }}
+      version_name: ${{ inputs.modrinth_version_name }}
     secrets: inherit
 
   publish-curseforge:

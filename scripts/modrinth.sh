@@ -5,7 +5,7 @@ for cmd in curl jq; do
     command -v "$cmd" > /dev/null 2>&1 || { printf 'Error: %s is not installed\n' "$cmd"; exit 1; }
 done
 
-for var in MODRINTH_TOKEN PROJECT_ID VERSION MINECRAFT_VERSION JAR MOD_NAME; do
+for var in MODRINTH_TOKEN PROJECT_ID VERSION MINECRAFT_VERSIONS LOADERS ENVIRONMENT JAR MOD_NAME; do
     val=$(printenv "$var")
     [ -z "$val" ] && printf 'Error: %s is not set\n' "$var" && exit 1
 done
@@ -19,20 +19,29 @@ if printf '%s' "$existing" | jq -e --arg v "$VERSION" 'any(.[]; .version_number 
     exit 0
 fi
 
-prefix=$(printf '%s' "$MINECRAFT_VERSION" | cut -d. -f1,2)
-game_versions=$(curl -sf "https://api.modrinth.com/v2/tag/game_version" \
-    -H "User-Agent: victorfaurschou/${MOD_NAME}" | \
-    jq --arg p "$prefix" '[.[] | select(.version_type == "release") | select(.version == $p or (.version | startswith($p + "."))) | .version]')
+gv_list=""
+for mc_version in ${MINECRAFT_VERSIONS}; do
+    gv_list="${gv_list:+$gv_list,}\"$mc_version\""
+done
+
+loaders_list=""
+for loader in ${LOADERS}; do
+    loaders_list="${loaders_list:+$loaders_list,}\"$loader\""
+done
 
 deps="${DEPENDENCIES:-[]}"
 
 data=$(jq -n \
-    --arg name "$VERSION" \
+    --arg name "${VERSION_NAME:-$VERSION}" \
     --arg version_number "$VERSION" \
     --arg project_id "$PROJECT_ID" \
-    --argjson game_versions "$game_versions" \
+    --argjson game_versions "[$gv_list]" \
+    --argjson loaders "[$loaders_list]" \
     --argjson dependencies "$deps" \
-    '{name:$name,version_number:$version_number,project_id:$project_id,file_parts:["jar"],game_versions:$game_versions,loaders:["fabric"],version_type:"release",status:"listed",dependencies:$dependencies,featured:true}')
+    --arg version_type "${VERSION_TYPE:-release}" \
+    --arg changelog "${CHANGELOG:-}" \
+    '{name:$name,version_number:$version_number,project_id:$project_id,file_parts:["jar"],game_versions:$game_versions,loaders:$loaders,version_type:$version_type,status:"listed",dependencies:$dependencies,featured:true} +
+    if $changelog != "" then {changelog:$changelog} else {} end')
 
 response=$(curl -s -X POST "https://api.modrinth.com/v2/version" \
     -H "Authorization: ${MODRINTH_TOKEN}" \
@@ -43,13 +52,11 @@ response=$(curl -s -X POST "https://api.modrinth.com/v2/version" \
 printf '%s\n' "$response"
 version_id=$(printf '%s' "$response" | jq -e -r '.id')
 
-if [ -n "${ENVIRONMENT:-}" ]; then
-    curl -sf -X PATCH "https://api.modrinth.com/v3/version/${version_id}" \
-        -H "Authorization: ${MODRINTH_TOKEN}" \
-        -H "User-Agent: victorfaurschou/${MOD_NAME}" \
-        -H "Content-Type: application/json" \
-        -d "$(jq -n --arg e "$ENVIRONMENT" '{environment:$e}')"
-fi
+curl -sf -X PATCH "https://api.modrinth.com/v3/version/${version_id}" \
+    -H "Authorization: ${MODRINTH_TOKEN}" \
+    -H "User-Agent: victorfaurschou/${MOD_NAME}" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg e "$ENVIRONMENT" '{environment:$e}')"
 
 current=$(curl -sf "https://api.modrinth.com/v2/project/${PROJECT_ID}" \
     -H "Authorization: ${MODRINTH_TOKEN}" \
