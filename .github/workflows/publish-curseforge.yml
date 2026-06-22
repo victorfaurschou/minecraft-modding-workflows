@@ -8,12 +8,39 @@ on:
       version:
         required: true
         type: string
-      minecraft_version:
+      minecraft_versions:
         required: true
         type: string
       build_run_id:
         required: true
         type: string
+      relations:
+        required: false
+        type: string
+        default: '[]'
+      environment:
+        required: false
+        type: string
+        default: ''
+      java_versions:
+        required: false
+        type: string
+        default: ''
+      loaders:
+        required: true
+        type: string
+      release_type:
+        required: false
+        type: string
+        default: 'release'
+      changelog:
+        required: false
+        type: string
+        default: ''
+      changelog_type:
+        required: false
+        type: string
+        default: 'text'
     secrets:
       CURSEFORGE_LEGACY_API_TOKEN:
         required: true
@@ -50,7 +77,14 @@ jobs:
           CURSEFORGE_API_TOKEN: ${{ secrets.CURSEFORGE_API_TOKEN }}
           PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
           VERSION: ${{ inputs.version }}
-          MINECRAFT_VERSION: ${{ inputs.minecraft_version }}
+          MINECRAFT_VERSIONS: ${{ inputs.minecraft_versions }}
           JAR: build/libs/${{ inputs.mod_name }}-${{ inputs.version }}.jar
           MOD_NAME: ${{ inputs.mod_name }}
+          CURSEFORGE_RELATIONS: ${{ inputs.relations }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          JAVA_VERSIONS: ${{ inputs.java_versions }}
+          LOADERS: ${{ inputs.loaders }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          CHANGELOG: ${{ inputs.changelog }}
+          CHANGELOG_TYPE: ${{ inputs.changelog_type }}
         run: sh minecraft-modding-workflows/scripts/curseforge.sh

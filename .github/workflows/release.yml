@@ -24,6 +24,37 @@ on:
         required: false
         type: string
         default: ''
+      curseforge_minecraft_versions:
+        required: false
+        type: string
+        default: ''
+      curseforge_loaders:
+        required: true
+        type: string
+      curseforge_environment:
+        required: false
+        type: string
+        default: ''
+      curseforge_java_versions:
+        required: false
+        type: string
+        default: ''
+      curseforge_relations:
+        required: false
+        type: string
+        default: ''
+      curseforge_release_type:
+        required: false
+        type: string
+        default: ''
+      curseforge_changelog:
+        required: false
+        type: string
+        default: ''
+      curseforge_changelog_type:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   release:
@@ -83,6 +114,13 @@ jobs:
     with:
       mod_name: ${{ inputs.mod_name }}
       version: ${{ needs.release.outputs.version }}
-      minecraft_version: ${{ needs.release.outputs.minecraft_version }}
+      minecraft_versions: ${{ inputs.curseforge_minecraft_versions || needs.release.outputs.minecraft_version }}
       build_run_id: ${{ inputs.build_run_id }}
+      loaders: ${{ inputs.curseforge_loaders }}
+      environment: ${{ inputs.curseforge_environment }}
+      java_versions: ${{ inputs.curseforge_java_versions }}
+      relations: ${{ inputs.curseforge_relations }}
+      release_type: ${{ inputs.curseforge_release_type }}
+      changelog: ${{ inputs.curseforge_changelog }}
+      changelog_type: ${{ inputs.curseforge_changelog_type }}
     secrets: inherit

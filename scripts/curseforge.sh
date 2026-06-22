@@ -5,7 +5,7 @@ for cmd in curl jq; do
     command -v "$cmd" > /dev/null 2>&1 || { printf 'Error: %s is not installed\n' "$cmd"; exit 1; }
 done
 
-for var in CURSEFORGE_API_TOKEN CURSEFORGE_LEGACY_API_TOKEN PROJECT_ID VERSION MINECRAFT_VERSION JAR MOD_NAME; do
+for var in CURSEFORGE_API_TOKEN CURSEFORGE_LEGACY_API_TOKEN PROJECT_ID VERSION MINECRAFT_VERSIONS LOADERS JAR MOD_NAME; do
     val=$(printenv "$var")
     [ -z "$val" ] && printf 'Error: %s is not set\n' "$var" && exit 1
 done
@@ -24,25 +24,42 @@ versions=$(curl -sf "https://minecraft.curseforge.com/api/game/versions" \
     -H "X-Api-Token: ${CURSEFORGE_LEGACY_API_TOKEN}" \
     -H "User-Agent: victorfaurschou/${MOD_NAME}")
 
-prefix=$(printf '%s' "$MINECRAFT_VERSION" | cut -d. -f1,2)
-type_id=$(printf '%s' "$versions" | jq --arg mc "$MINECRAFT_VERSION" --arg p "$prefix" \
-    'first(.[] | select(.name == $mc or .name == $p or (.name | startswith($p + "."))) | .gameVersionTypeID)')
-[ -z "$type_id" ] && printf 'Error: Could not find CurseForge version type for Minecraft %s\n' "$MINECRAFT_VERSION" && exit 1
-mc_ids=$(printf '%s' "$versions" | jq -r --arg p "$prefix" --argjson type_id "$type_id" \
-    '[.[] | select(.gameVersionTypeID == $type_id) | select(.name == $p or (.name | startswith($p + "."))) | .id] | join(",")')
-[ -z "$mc_ids" ] && printf 'Error: Could not find CurseForge version IDs for Minecraft %s\n' "$MINECRAFT_VERSION" && exit 1
-fabric_id=$(printf '%s' "$versions" | jq '.[] | select(.slug == "fabric") | .id')
-[ -z "$fabric_id" ] && printf 'Error: Could not find Fabric version ID on CurseForge\n' && exit 1
+gvn_list=""
+
+for mc_version in ${MINECRAFT_VERSIONS}; do
+    gvn_list="${gvn_list:+$gvn_list,}\"$mc_version\""
+done
+
+for loader in ${LOADERS}; do
+    loader_name=$(printf '%s' "$versions" | jq -r --arg slug "$loader" 'first(.[] | select(.slug == $slug) | .name)')
+    [ -z "$loader_name" ] && printf 'Error: Could not find "%s" loader on CurseForge\n' "$loader" && exit 1
+    gvn_list="${gvn_list:+$gvn_list,}\"$loader_name\""
+done
+
+case "${ENVIRONMENT:-}" in
+    client) gvn_list="${gvn_list:+$gvn_list,}\"Client\"" ;;
+    server) gvn_list="${gvn_list:+$gvn_list,}\"Server\"" ;;
+    both)   gvn_list="${gvn_list:+$gvn_list,}\"Client\",\"Server\"" ;;
+    "")     ;;
+    *)      printf 'Error: Invalid ENVIRONMENT value: %s (must be client, server, or both)\n' "${ENVIRONMENT}" && exit 1 ;;
+esac
+
+for jv in ${JAVA_VERSIONS:-}; do
+    gvn_list="${gvn_list:+$gvn_list,}\"Java $jv\""
+done
 
 relations="${CURSEFORGE_RELATIONS:-[]}"
 
 metadata=$(jq -n \
-    --argjson mc_ids "[$mc_ids]" \
-    --argjson fabric_id "$fabric_id" \
+    --argjson game_version_names "[$gvn_list]" \
     --argjson relations "$relations" \
-    '{changelog:"See GitHub release notes.",changelogType:"text",releaseType:"release",gameVersions:($mc_ids + [$fabric_id]),relations:{projects:$relations}}')
+    --arg release_type "${RELEASE_TYPE:-release}" \
+    --arg changelog "${CHANGELOG:-}" \
+    --arg changelog_type "${CHANGELOG_TYPE:-text}" \
+    '{changelog:$changelog,changelogType:$changelog_type,releaseType:$release_type,gameVersionNames:$game_version_names} +
+    if ($relations | length) > 0 then {relations:{projects:$relations}} else {} end')
 
-response=$(curl -sf -X POST "https://minecraft.curseforge.com/api/projects/${PROJECT_ID}/upload-file" \
+response=$(curl -s -X POST "https://minecraft.curseforge.com/api/projects/${PROJECT_ID}/upload-file" \
     -H "X-Api-Token: ${CURSEFORGE_LEGACY_API_TOKEN}" \
     -H "User-Agent: victorfaurschou/${MOD_NAME}" \
     -F "metadata=${metadata}" \
