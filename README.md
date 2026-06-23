@@ -1,3 +1,3 @@
 # Minecraft Modding Workflows
 
-Shared reusable GitHub Actions workflows for Fabric mods.
+Reusable GitHub Actions workflows for building Fabric Minecraft mods and publishing to Modrinth and CurseForge.
