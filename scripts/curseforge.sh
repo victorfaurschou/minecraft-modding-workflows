@@ -15,7 +15,7 @@ existing=$(curl -sf "https://api.curseforge.com/v1/mods/${PROJECT_ID}/files" \
     -H "User-Agent: victorfaurschou/${MOD_NAME}")
 
 jar_name=$(basename "$JAR")
-if printf '%s' "$existing" | jq -e --arg name "$jar_name" '.data | any(.[]; .fileName == $name)' > /dev/null; then
+if printf '%s' "$existing" | jq -e --arg name "$jar_name" '.data | any(.[]; .fileName == $name or .displayName == $name)' > /dev/null; then
     printf 'Version %s already exists on CurseForge, skipping.\n' "$VERSION"
     exit 0
 fi
@@ -56,7 +56,8 @@ metadata=$(jq -n \
     --arg release_type "${RELEASE_TYPE:-release}" \
     --arg changelog "${CHANGELOG:-}" \
     --arg changelog_type "${CHANGELOG_TYPE:-text}" \
-    '{changelog:$changelog,changelogType:$changelog_type,releaseType:$release_type,gameVersionNames:$game_version_names} +
+    --arg display_name "$jar_name" \
+    '{displayName:$display_name,changelog:$changelog,changelogType:$changelog_type,releaseType:$release_type,gameVersionNames:$game_version_names} +
     if ($relations | length) > 0 then {relations:{projects:$relations}} else {} end')
 
 response=$(curl -s -X POST "https://minecraft.curseforge.com/api/projects/${PROJECT_ID}/upload-file" \
