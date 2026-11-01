@@ -40,7 +40,7 @@ case "${ENVIRONMENT:-}" in
     client) gvn_list="${gvn_list:+$gvn_list,}\"Client\"" ;;
     server) gvn_list="${gvn_list:+$gvn_list,}\"Server\"" ;;
     both)   gvn_list="${gvn_list:+$gvn_list,}\"Client\",\"Server\"" ;;
-    "")     ;;
+    "")     printf 'Error: ENVIRONMENT is not set. CurseForge rejects uploads without an environment (errorCode 1021). Set curseforge_environment (client, server or both), or a modrinth_environment it can be derived from.\n' && exit 1 ;;
     *)      printf 'Error: Invalid ENVIRONMENT value: %s (must be client, server, or both)\n' "${ENVIRONMENT}" && exit 1 ;;
 esac
 
